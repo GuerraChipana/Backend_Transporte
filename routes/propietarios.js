@@ -2,24 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Buscar propietarios por DNI
-router.get('/search', async (req, res) => {
-    const { dni } = req.query;
-
-    try {
-        const query = dni ? `SELECT * FROM propietarios WHERE dni LIKE ?` : `SELECT * FROM propietarios`;
-        const values = dni ? [`%${dni}%`] : [];
-        const [results] = await db.execute(query, values);
-        res.json(results);
-    } catch (error) {
-        console.error('Error al buscar propietarios:', error);
-        res.status(500).send('Error al buscar propietarios');
-    }
-});
-
 // Obtener todos los propietarios
 router.get('/', (req, res) => {
-    const query = `SELECT id, nombre, apellido, dni, telefono, domicilio FROM Propietario`;
+    const query = `SELECT id, nombre, apellido, dni, telefono, domicilio, estado FROM Propietario`;
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error al obtener propietarios:', err);
@@ -31,14 +16,14 @@ router.get('/', (req, res) => {
 
 // Agregar un nuevo propietario
 router.post('/', (req, res) => {
-    const { nombre, apellido, dni, telefono, domicilio } = req.body;
+    const { nombre, apellido, dni, telefono, domicilio, idUsuario } = req.body;
 
-    if (!nombre || !apellido || !dni || !telefono || !domicilio) {
+    if (!nombre || !apellido || !dni || !telefono || !domicilio || idUsuario === undefined) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
-    const query = `INSERT INTO Propietario (nombre, apellido, dni, telefono, domicilio) VALUES (?, ?, ?, ?, ?)`;
-    db.query(query, [nombre, apellido, dni, telefono, domicilio], (err, result) => {
+    const query = `INSERT INTO Propietario (ID_USUARIO, nombre, apellido, dni, telefono, domicilio, FECHA_REGISTRO) VALUES (?, ?, ?, ?, ?, ?, NOW())`;
+    db.query(query, [idUsuario, nombre, apellido, dni, telefono, domicilio], (err, result) => {
         if (err) {
             console.error('Error al agregar el propietario:', err);
             return res.status(500).json({ error: 'Error al agregar el propietario' });
@@ -50,14 +35,14 @@ router.post('/', (req, res) => {
 // Actualizar un propietario
 router.put('/:id', (req, res) => {
     const id = req.params.id;
-    const { nombre, apellido, dni, telefono, domicilio } = req.body;
+    const { nombre, apellido, dni, telefono, domicilio, estado } = req.body;
 
-    if (!nombre || !apellido || !dni || !telefono || !domicilio) {
+    if (!nombre || !apellido || !dni || !telefono || !domicilio || estado === undefined) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
-    const query = `UPDATE Propietario SET nombre = ?, apellido = ?, dni = ?, telefono = ?, domicilio = ? WHERE id = ?`;
-    db.query(query, [nombre, apellido, dni, telefono, domicilio, id], (err, result) => {
+    const query = `UPDATE Propietario SET nombre = ?, apellido = ?, dni = ?, telefono = ?, domicilio = ?, estado = ? WHERE id = ?`;
+    db.query(query, [nombre, apellido, dni, telefono, domicilio, estado, id], (err, result) => {
         if (err) {
             console.error('Error al actualizar el propietario:', err);
             return res.status(500).json({ error: 'Error al actualizar propietario' });
@@ -66,17 +51,22 @@ router.put('/:id', (req, res) => {
     });
 });
 
-// Eliminar un propietario
-router.delete('/:id', (req, res) => {
+// Cambiar el estado de un propietario
+router.patch('/:id/estado', (req, res) => {
     const id = req.params.id;
+    const { estado } = req.body;
 
-    const query = 'DELETE FROM Propietario WHERE id = ?';
-    db.query(query, [id], (err, result) => {
+    if (estado === undefined) {
+        return res.status(400).json({ error: 'El estado es requerido' });
+    }
+
+    const query = `UPDATE Propietario SET estado = ? WHERE id = ?`;
+    db.query(query, [estado, id], (err, result) => {
         if (err) {
-            console.error('Error al eliminar el propietario:', err);
-            return res.status(500).json({ error: 'Error al eliminar propietario' });
+            console.error('Error al cambiar el estado del propietario:', err);
+            return res.status(500).json({ error: 'Error al cambiar el estado' });
         }
-        res.json({ message: 'Propietario eliminado exitosamente' });
+        res.json({ message: 'Estado del propietario actualizado exitosamente' });
     });
 });
 

@@ -4,11 +4,11 @@ const db = require('../db');
 
 // Obtener todos los seguros vehiculares
 router.get('/', (req, res) => {
-    const query = `SELECT id, aseguradora, n_poliza, vigencia FROM seguro_vehicular`;
+    const query = 'SELECT id, aseguradora, estado FROM seguro_vehicular';
     db.query(query, (err, results) => {
         if (err) {
-            console.error('Error al obtener seguros vehiculares:', err);
-            return res.status(500).json({ error: 'Error al obtener seguros vehiculares' });
+            console.error('Error al ejecutar la consulta:', err);
+            return res.status(500).json({ error: 'Error al obtener seguros vehiculares', details: err.message });
         }
         res.json(results);
     });
@@ -16,17 +16,17 @@ router.get('/', (req, res) => {
 
 // Agregar un nuevo seguro vehicular
 router.post('/', (req, res) => {
-    const { aseguradora, n_poliza, vigencia } = req.body;
+    const { aseguradora, id_usuario, fecha_creacion } = req.body;
 
-    if (!aseguradora || !n_poliza || !vigencia) {
+    if (!aseguradora || !id_usuario) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
-    const query = `INSERT INTO seguro_vehicular (aseguradora, n_poliza, vigencia) VALUES (?, ?, ?)`;
-    db.query(query, [aseguradora, n_poliza, vigencia], (err, result) => {
+    const query = 'INSERT INTO seguro_vehicular (aseguradora, id_usuario, estado, fecha_registro) VALUES (?, ?, 1, NOW())';
+    db.query(query, [aseguradora, id_usuario], (err, result) => {
         if (err) {
             console.error('Error al agregar el seguro vehicular:', err);
-            return res.status(500).json({ error: 'Error al agregar el seguro vehicular' });
+            return res.status(500).json({ error: 'Error al agregar el seguro vehicular', details: err.message });
         }
         res.status(201).json({ message: 'Seguro vehicular agregado exitosamente', seguroId: result.insertId });
     });
@@ -35,33 +35,63 @@ router.post('/', (req, res) => {
 // Actualizar un seguro vehicular
 router.put('/:id', (req, res) => {
     const id = req.params.id;
-    const { aseguradora, n_poliza, vigencia } = req.body;
+    const { aseguradora, id_usuario_modificacion } = req.body;
 
-    if (!aseguradora || !n_poliza || !vigencia) {
+    // Validar entradas
+    if (!aseguradora || !id_usuario_modificacion) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
-    const query = `UPDATE seguro_vehicular SET aseguradora = ?, n_poliza = ?, vigencia = ? WHERE id = ?`;
-    db.query(query, [aseguradora, n_poliza, vigencia, id], (err, result) => {
+    // Verificar si el seguro vehicular existe
+    const checkQuery = 'SELECT * FROM seguro_vehicular WHERE id = ?';
+    db.query(checkQuery, [id], (err, results) => {
         if (err) {
-            console.error('Error al actualizar el seguro vehicular:', err);
-            return res.status(500).json({ error: 'Error al actualizar seguro vehicular' });
+            console.error('Error al verificar el seguro vehicular:', err);
+            return res.status(500).json({ error: 'Error al verificar seguro vehicular', details: err.message });
         }
-        res.json({ message: 'Seguro vehicular actualizado exitosamente' });
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Seguro vehicular no encontrado' });
+        }
+
+        // Actualizar el seguro vehicular
+        const query = 'UPDATE seguro_vehicular SET aseguradora = ?, id_usuario_modificacion = ?, fecha_modificacion = NOW() WHERE id = ?';
+        db.query(query, [aseguradora, id_usuario_modificacion, id], (err, result) => {
+            if (err) {
+                console.error('Error al actualizar el seguro vehicular:', err);
+                return res.status(500).json({ error: 'Error al actualizar seguro vehicular', details: err.message });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Seguro vehicular no encontrado' });
+            }
+
+            res.json({ message: 'Seguro vehicular actualizado exitosamente' });
+        });
     });
 });
 
-// Eliminar un seguro vehicular
-router.delete('/:id', (req, res) => {
+// Cambiar el estado de un seguro vehicular
+router.patch('/:id/estado', (req, res) => {
     const id = req.params.id;
+    const { estado, id_usuario_modificacion } = req.body;
 
-    const query = 'DELETE FROM seguro_vehicular WHERE id = ?';
-    db.query(query, [id], (err, result) => {
+    if (estado === undefined || !id_usuario_modificacion) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    const query = 'UPDATE seguro_vehicular SET estado = ?, id_usuario_modificacion = ?, fecha_modificacion = NOW() WHERE id = ?';
+    db.query(query, [estado, id_usuario_modificacion, id], (err, result) => {
         if (err) {
-            console.error('Error al eliminar el seguro vehicular:', err);
-            return res.status(500).json({ error: 'Error al eliminar seguro vehicular' });
+            console.error('Error al cambiar el estado del seguro vehicular:', err);
+            return res.status(500).json({ error: 'Error al cambiar el estado', details: err.message });
         }
-        res.json({ message: 'Seguro vehicular eliminado exitosamente' });
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Seguro vehicular no encontrado' });
+        }
+
+        res.json({ message: 'Estado del seguro vehicular actualizado exitosamente' });
     });
 });
 
