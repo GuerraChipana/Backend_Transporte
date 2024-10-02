@@ -16,7 +16,7 @@ router.get('/', (req, res) => {
 
 // Agregar un nuevo seguro vehicular
 router.post('/', (req, res) => {
-    const { aseguradora, id_usuario, fecha_creacion } = req.body;
+    const { aseguradora, id_usuario } = req.body;
 
     if (!aseguradora || !id_usuario) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
