@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
     const { nombre, apellido, dni, telefono, domicilio, idUsuario } = req.body;
 
-    if (!nombre || !apellido || !dni || !telefono || !domicilio || !idUsuario) {
+    if (!nombre || !apellido || !dni  || !idUsuario) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
@@ -38,7 +38,7 @@ router.put('/:id', (req, res) => {
     const { nombre, apellido, dni, telefono, domicilio, id_usuario_modificacion } = req.body;
 
     // Validar entradas
-    if (!nombre || !apellido || !dni || !telefono || !domicilio || !id_usuario_modificacion) {
+    if (!nombre || !apellido || !dni || !id_usuario_modificacion) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 

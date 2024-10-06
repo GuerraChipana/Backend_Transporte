@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../db'); // Asegúrate de tener tu conexión a la base de datos
 
 // Obtener todos los usuarios
 router.get('/', (req, res) => {
-    const query = `SELECT id, dni, nombre, apellido, usuario, estado FROM usuario`;
+    const query = `SELECT id, dni, nombre, apellido, usuario, estado, rol FROM usuario`;
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error al obtener usuarios:', err);
@@ -14,54 +14,84 @@ router.get('/', (req, res) => {
     });
 });
 
-// Agregar un nuevo usuario
 router.post('/', (req, res) => {
-    const { dni, nombre, apellido, usuario, contrasena } = req.body;
+    const { dni, nombre, apellido, usuario, contrasena, rol, idUsuarioCreador } = req.body;
 
-    if (!dni || !nombre || !apellido || !usuario || !contrasena) {
+    // Verificar que todos los campos requeridos estén presentes
+    if (!dni || !nombre || !apellido || !usuario || !contrasena || rol === undefined || !idUsuarioCreador) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
-    const query = `INSERT INTO usuario (dni, nombre, apellido, usuario, contrasena, estado, fecha_registro) VALUES (?, ?, ?, ?, ?, 1, NOW())`;
-    db.query(query, [dni, nombre, apellido, usuario, contrasena], (err, result) => {
+    // Validar rol (1 o 2)
+    if (rol !== 1 && rol !== 2) {
+        return res.status(400).json({ error: 'Rol inválido. Debe ser 1 (superadministrador) o 2 (administrador).' });
+    }
+
+    const query = `INSERT INTO usuario (dni, nombre, apellido, usuario, contrasena, rol, estado, fecha_registro, id_usuario_creacion) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), ?)`;
+    db.query(query, [dni, nombre, apellido, usuario, contrasena, rol, idUsuarioCreador], (err, result) => {
         if (err) {
             console.error('Error al agregar el usuario:', err);
-            return res.status(500).json({ error: 'Error al agregar el usuario' });
+            return res.status(500).json({ error: 'Error al agregar el usuario', detail: err.message });
         }
         res.status(201).json({ message: 'Usuario agregado exitosamente', usuarioId: result.insertId });
     });
 });
 
-// Actualizar un usuario
-router.put('/:id', (req, res) => {
-    const id = req.params.id;
-    const { dni, nombre, apellido, usuario, contrasena, estado } = req.body;
 
-    if (!dni || !nombre || !apellido || !usuario || estado === undefined) {
-        return res.status(400).json({ error: 'Todos los campos son requeridos' });
+// Actualizar nombre, apellido, dni y rol
+router.put('/info/:id', (req, res) => {
+    const id = req.params.id;
+    const { dni, nombre, apellido, rol, idUsuarioModificador } = req.body;
+
+    if (!dni || !nombre || !apellido || rol === undefined || !idUsuarioModificador) {
+        return res.status(400).json({ error: 'DNI, nombre, apellido, rol y ID de modificador son requeridos' });
     }
 
-    const query = `UPDATE usuario SET dni = ?, nombre = ?, apellido = ?, usuario = ?, contrasena = ?, estado = ? WHERE id = ?`;
-    db.query(query, [dni, nombre, apellido, usuario, contrasena, estado, id], (err, result) => {
+    // Validar rol (1 o 2)
+    if (rol !== 1 && rol !== 2) {
+        return res.status(400).json({ error: 'Rol inválido. Debe ser 1 (superadministrador) o 2 (administrador).' });
+    }
+
+    const query = `UPDATE usuario SET dni = ?, nombre = ?, apellido = ?, rol = ?, id_usuario_modificacion = ?, fecha_modificacion = NOW() WHERE id = ?`;
+    db.query(query, [dni, nombre, apellido, rol, idUsuarioModificador, id], (err, result) => {
         if (err) {
-            console.error('Error al actualizar el usuario:', err);
-            return res.status(500).json({ error: 'Error al actualizar usuario' });
+            console.error('Error al actualizar la información del usuario:', err);
+            return res.status(500).json({ error: 'Error al actualizar la información del usuario' });
         }
-        res.json({ message: 'Usuario actualizado exitosamente' });
+        res.json({ message: 'Información del usuario actualizada exitosamente' });
+    });
+});
+
+// Actualizar usuario y contraseña
+router.put('/credenciales/:id', (req, res) => {
+    const id = req.params.id;
+    const { usuario, contrasena, idUsuarioModificador } = req.body;
+
+    if (!usuario || !contrasena || !idUsuarioModificador) {
+        return res.status(400).json({ error: 'Usuario, contraseña y ID de modificador son requeridos' });
+    }
+
+    const query = `UPDATE usuario SET usuario = ?, contrasena = ?, id_usuario_modificacion = ?, fecha_modificacion = NOW() WHERE id = ?`;
+    db.query(query, [usuario, contrasena, idUsuarioModificador, id], (err, result) => {
+        if (err) {
+            console.error('Error al actualizar las credenciales del usuario:', err);
+            return res.status(500).json({ error: 'Error al actualizar las credenciales del usuario' });
+        }
+        res.json({ message: 'Credenciales del usuario actualizadas exitosamente' });
     });
 });
 
 // Cambiar el estado de un usuario
 router.patch('/:id/estado', (req, res) => {
     const id = req.params.id;
-    const { estado } = req.body;
+    const { estado, idUsuarioModificador } = req.body;
 
-    if (estado === undefined) {
-        return res.status(400).json({ error: 'El estado es requerido' });
+    if (estado === undefined || !idUsuarioModificador) {
+        return res.status(400).json({ error: 'El estado y ID de modificador son requeridos' });
     }
 
-    const query = `UPDATE usuario SET estado = ? WHERE id = ?`;
-    db.query(query, [estado, id], (err, result) => {
+    const query = `UPDATE usuario SET estado = ?, id_usuario_modificacion = ?, fecha_modificacion = NOW() WHERE id = ?`;
+    db.query(query, [estado, idUsuarioModificador, id], (err, result) => {
         if (err) {
             console.error('Error al cambiar el estado del usuario:', err);
             return res.status(500).json({ error: 'Error al cambiar el estado' });
@@ -71,3 +101,4 @@ router.patch('/:id/estado', (req, res) => {
 });
 
 module.exports = router;
+

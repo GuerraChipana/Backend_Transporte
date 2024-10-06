@@ -4,7 +4,7 @@ const db = require('../db'); // Asegúrate de que 'db' esté configurado correct
 
 // Obtener todas las asociaciones
 router.get('/', (req, res) => {
-    const query = 'SELECT * FROM asociaciones';
+    const query = 'SELECT id, nombre, estado FROM asociaciones';
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error al obtener las asociaciones:', err);
