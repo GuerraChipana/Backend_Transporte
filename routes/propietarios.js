@@ -16,14 +16,15 @@ router.get('/', (req, res) => {
 
 // Agregar un nuevo propietario
 router.post('/', (req, res) => {
-    const { nombre, apellido, dni, telefono, domicilio, idUsuario } = req.body;
+    const { nombre, apellido, dni, telefono, domicilio, id_usuario } = req.body;
+    console.log('Datos recibidos en la solicitud POST:', { nombre, apellido, dni, telefono, domicilio, id_usuario });
 
-    if (!nombre || !apellido || !dni  || !idUsuario) {
+    if (!nombre || !apellido || !dni || !id_usuario) {
         return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
     const query = `INSERT INTO Propietario (ID_USUARIO, nombre, apellido, dni, telefono, domicilio, FECHA_REGISTRO) VALUES (?, ?, ?, ?, ?, ?, NOW())`;
-    db.query(query, [idUsuario, nombre, apellido, dni, telefono, domicilio], (err, result) => {
+    db.query(query, [id_usuario, nombre, apellido, dni, telefono, domicilio], (err, result) => {
         if (err) {
             console.error('Error al agregar el propietario:', err);
             return res.status(500).json({ error: 'Error al agregar el propietario', details: err.message });
